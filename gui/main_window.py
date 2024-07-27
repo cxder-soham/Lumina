@@ -10,16 +10,14 @@ from .toolbar import ToolBar
 class MainWindow:
     def __init__(self, root):
         self.root = root
-        self.style = Style(theme="darkly") 
-        self.current_theme = "darkly" 
+        self.style = Style(theme="darkly")  # Default to darkly theme
+        self.current_theme = "darkly"  # Track current theme
         self.root.title('Photoshop Clone')
         self.root.geometry('1200x800')
 
         self.image = None
         self.image_path = None
         self.draw = None
-        self.undo_stack = []
-        self.redo_stack = []
 
         self.canvas = tk.Canvas(root, bg='white')
         self.canvas.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -55,7 +53,7 @@ class MainWindow:
         view_menu.add_command(label="Toggle Theme", command=self.toggle_theme)
         menubar.add_cascade(label="View", menu=view_menu)
 
-        self.current_tool = 'brush'
+        self.current_tool = None
         self.prev_x = None
         self.prev_y = None
 
@@ -75,7 +73,6 @@ class MainWindow:
             self.image = Image.open(file_path)
             self.display_image()
             self.draw = ImageDraw.Draw(self.image)
-            self.clear_history()
 
     def save_image(self):
         if self.image:
@@ -91,7 +88,6 @@ class MainWindow:
 
     def crop_image(self):
         if self.image:
-            self.push_undo()
             editor = ImageEditor(self.image_path)
             editor.crop(10, 10, 200, 200)  # Example coordinates
             editor.save('cropped.png')
@@ -101,7 +97,6 @@ class MainWindow:
 
     def resize_image(self):
         if self.image:
-            self.push_undo()
             editor = ImageEditor(self.image_path)
             editor.resize(400, 400)  # Example size
             editor.save('resized.png')
@@ -111,7 +106,6 @@ class MainWindow:
 
     def rotate_image(self):
         if self.image:
-            self.push_undo()
             editor = ImageEditor(self.image_path)
             editor.rotate(90)  # Example rotation
             editor.save('rotated.png')
@@ -120,22 +114,22 @@ class MainWindow:
             self.draw = ImageDraw.Draw(self.image)
 
     def start_paint(self, event):
-        self.push_undo()
         self.prev_x, self.prev_y = event.x, event.y
 
     def paint(self, event):
-        if self.image and self.draw:
+        if self.image and self.draw and self.current_tool:
             x, y = event.x, event.y
             if self.current_tool == 'brush':
-                self.draw.line([self.prev_x, self.prev_y, x, y],fill=self.toolbar.brush_color, width=self.toolbar.brush_size)
+                self.draw.line([self.prev_x, self.prev_y, x, y],
+                               fill=self.toolbar.brush_color, width=self.toolbar.brush_size)
             elif self.current_tool == 'eraser':
-                self.draw.line([self.prev_x, self.prev_y, x, y],fill='white', width=self.toolbar.eraser_size)
+                self.draw.line([self.prev_x, self.prev_y, x, y],
+                               fill='white', width=self.toolbar.eraser_size)
             self.prev_x, self.prev_y = x, y
             self.display_image()
 
     def apply_filter(self, filter_func):
         if self.image:
-            self.push_undo()
             self.image = filter_func(self.image)
             self.display_image()
 
@@ -158,25 +152,3 @@ class MainWindow:
         if factor is not None:
             self.apply_filter(
                 lambda img: ImageEnhance.Contrast(img).enhance(factor))
-
-    def push_undo(self):
-        self.undo_stack.append(self.image.copy())
-        self.redo_stack.clear()
-
-    def undo(self):
-        if self.undo_stack:
-            self.redo_stack.append(self.image.copy())
-            self.image = self.undo_stack.pop()
-            self.display_image()
-            self.draw = ImageDraw.Draw(self.image)
-
-    def redo(self):
-        if self.redo_stack:
-            self.undo_stack.append(self.image.copy())
-            self.image = self.redo_stack.pop()
-            self.display_image()
-            self.draw = ImageDraw.Draw(self.image)
-
-    def clear_history(self):
-        self.undo_stack.clear()
-        self.redo_stack.clear()
