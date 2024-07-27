@@ -1,7 +1,8 @@
 import tkinter as tk
-from tkinter import filedialog, simpledialog
+from tkinter import filedialog, simpledialog, Toplevel, HORIZONTAL, X
 from ttkbootstrap import Style
 from ttkbootstrap.constants import *
+from ttkbootstrap import ttk 
 from PIL import Image, ImageTk, ImageDraw, ImageFilter, ImageEnhance
 from image_processing.editor import ImageEditor
 from .toolbar import ToolBar
@@ -10,12 +11,13 @@ from .toolbar import ToolBar
 class MainWindow:
     def __init__(self, root):
         self.root = root
-        self.style = Style(theme="darkly")  # Default to darkly theme
-        self.current_theme = "darkly"  # Track current theme
+        self.style = Style(theme="darkly")  
+        self.current_theme = "darkly"
         self.root.title('Photoshop Clone')
         self.root.geometry('1200x800')
 
         self.image = None
+        self.original_image = None
         self.image_path = None
         self.draw = None
 
@@ -42,8 +44,8 @@ class MainWindow:
         menubar.add_cascade(label="Tools", menu=self.toolbar.menu)
 
         filters_menu = tk.Menu(menubar, tearoff=0)
-        filters_menu.add_command(label="Blur", command=self.apply_blur)
-        filters_menu.add_command(label="Sharpen", command=self.apply_sharpen)
+        filters_menu.add_command(label="Blur", command=self.blur_popup)
+        filters_menu.add_command(label="Sharpen", command=self.sharpen_popup)
         filters_menu.add_command(
             label="Brightness", command=self.apply_brightness)
         filters_menu.add_command(label="Contrast", command=self.apply_contrast)
@@ -71,6 +73,7 @@ class MainWindow:
         if file_path:
             self.image_path = file_path
             self.image = Image.open(file_path)
+            self.original_image = self.image.copy()
             self.display_image()
             self.draw = ImageDraw.Draw(self.image)
 
@@ -92,6 +95,7 @@ class MainWindow:
             editor.crop(10, 10, 200, 200)  # Example coordinates
             editor.save('cropped.png')
             self.image = Image.open('cropped.png')
+            self.original_image = self.image.copy()
             self.display_image()
             self.draw = ImageDraw.Draw(self.image)
 
@@ -101,6 +105,7 @@ class MainWindow:
             editor.resize(400, 400)  # Example size
             editor.save('resized.png')
             self.image = Image.open('resized.png')
+            self.original_image = self.image.copy()
             self.display_image()
             self.draw = ImageDraw.Draw(self.image)
 
@@ -110,6 +115,7 @@ class MainWindow:
             editor.rotate(90)  # Example rotation
             editor.save('rotated.png')
             self.image = Image.open('rotated.png')
+            self.original_image = self.image.copy()
             self.display_image()
             self.draw = ImageDraw.Draw(self.image)
 
@@ -130,14 +136,18 @@ class MainWindow:
 
     def apply_filter(self, filter_func):
         if self.image:
-            self.image = filter_func(self.image)
+            self.image = filter_func(self.original_image.copy())
             self.display_image()
 
-    def apply_blur(self):
-        self.apply_filter(lambda img: img.filter(ImageFilter.GaussianBlur(2)))
+    def apply_blur(self, value):
+        value = float(value)
+        self.apply_filter(lambda img: img.filter(
+            ImageFilter.GaussianBlur(value)))
 
-    def apply_sharpen(self):
-        self.apply_filter(lambda img: img.filter(ImageFilter.SHARPEN))
+    def apply_sharpen(self, value):
+        value = float(value)
+        self.apply_filter(lambda img: img.filter(
+            ImageFilter.UnsharpMask(value)))
 
     def apply_brightness(self):
         factor = simpledialog.askfloat(
@@ -152,3 +162,15 @@ class MainWindow:
         if factor is not None:
             self.apply_filter(
                 lambda img: ImageEnhance.Contrast(img).enhance(factor))
+
+    def blur_popup(self):
+        self.popup_slider("Blur", self.apply_blur)
+
+    def sharpen_popup(self):
+        self.popup_slider("Sharpen", self.apply_sharpen)
+
+    def popup_slider(self, title, command):
+        popup = Toplevel(self.root)
+        popup.title(title)
+        slider = ttk.Scale(popup, from_=0.0, to=10.0,orient=HORIZONTAL, command=command)
+        slider.pack(fill=X, padx=10, pady=10)
