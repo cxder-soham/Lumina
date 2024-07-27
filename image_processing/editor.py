@@ -1,8 +1,8 @@
 from PIL import Image, ImageFilter, ImageEnhance
 
 class ImageEditor:
-    def __init__(self, image_path):
-        self.image = Image.open(image_path)
+    def __init__(self, image):
+        self.image = image
 
     def crop(self, left, top, right, bottom):
         self.image = self.image.crop((left, top, right, bottom))

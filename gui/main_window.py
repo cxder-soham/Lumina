@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, simpledialog, messagebox
 from PIL import Image, ImageTk
 from image_processing.editor import ImageEditor
 
@@ -11,6 +11,8 @@ class MainWindow:
 
         self.image = None
         self.image_path = None
+        self.image_stack = []
+        self.redo_stack = []
 
         self.canvas = tk.Canvas(root, bg='white')
         self.canvas.pack(fill=tk.BOTH, expand=True)
@@ -27,6 +29,8 @@ class MainWindow:
         edit_menu.add_command(label="Crop", command=self.crop_image)
         edit_menu.add_command(label="Resize", command=self.resize_image)
         edit_menu.add_command(label="Rotate", command=self.rotate_image)
+        edit_menu.add_command(label="Undo", command=self.undo)
+        edit_menu.add_command(label="Redo", command=self.redo)
         menubar.add_cascade(label="Edit", menu=edit_menu)
 
     def open_image(self):
@@ -34,6 +38,8 @@ class MainWindow:
         if file_path:
             self.image_path = file_path
             self.image = Image.open(file_path)
+            self.image_stack = [self.image.copy()]
+            self.redo_stack = []
             self.display_image()
 
     def save_image(self):
@@ -50,24 +56,46 @@ class MainWindow:
 
     def crop_image(self):
         if self.image:
-            editor = ImageEditor(self.image_path)
-            editor.crop(10, 10, 200, 200)  # Example coordinates
-            editor.save('cropped.png')
-            self.image = Image.open('cropped.png')
-            self.display_image()
+            left = simpledialog.askinteger("Input", "Left:")
+            top = simpledialog.askinteger("Input", "Top:")
+            right = simpledialog.askinteger("Input", "Right:")
+            bottom = simpledialog.askinteger("Input", "Bottom:")
+            if None not in (left, top, right, bottom):
+                self.image_stack.append(self.image.copy())
+                editor = ImageEditor(self.image)
+                editor.crop(left, top, right, bottom)
+                self.image = editor.image
+                self.display_image()
 
     def resize_image(self):
         if self.image:
-            editor = ImageEditor(self.image_path)
-            editor.resize(400, 400)  # Example size
-            editor.save('resized.png')
-            self.image = Image.open('resized.png')
-            self.display_image()
+            width = simpledialog.askinteger("Input", "Width:")
+            height = simpledialog.askinteger("Input", "Height:")
+            if None not in (width, height):
+                self.image_stack.append(self.image.copy())
+                editor = ImageEditor(self.image)
+                editor.resize(width, height)
+                self.image = editor.image
+                self.display_image()
 
     def rotate_image(self):
         if self.image:
-            editor = ImageEditor(self.image_path)
-            editor.rotate(90)  # Example rotation
-            editor.save('rotated.png')
-            self.image = Image.open('rotated.png')
+            degrees = simpledialog.askinteger("Input", "Degrees:")
+            if degrees is not None:
+                self.image_stack.append(self.image.copy())
+                editor = ImageEditor(self.image)
+                editor.rotate(degrees)
+                self.image = editor.image
+                self.display_image()
+
+    def undo(self):
+        if len(self.image_stack) > 1:
+            self.redo_stack.append(self.image_stack.pop())
+            self.image = self.image_stack[-1].copy()
+            self.display_image()
+
+    def redo(self):
+        if self.redo_stack:
+            self.image_stack.append(self.redo_stack.pop())
+            self.image = self.image_stack[-1].copy()
             self.display_image()
