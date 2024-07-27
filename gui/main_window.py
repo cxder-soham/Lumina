@@ -1,6 +1,6 @@
 import tkinter as tk
-from tkinter import filedialog, Menu
-from PIL import Image, ImageTk, ImageDraw
+from tkinter import filedialog, Menu, simpledialog
+from PIL import Image, ImageTk, ImageDraw, ImageFilter, ImageEnhance
 from image_processing.editor import ImageEditor
 from .toolbar import ToolBar
 
@@ -14,6 +14,8 @@ class MainWindow:
         self.image = None
         self.image_path = None
         self.draw = None
+        self.undo_stack = []
+        self.redo_stack = []
 
         self.canvas = tk.Canvas(root, bg='white')
         self.canvas.pack(fill=tk.BOTH, expand=True)
@@ -37,6 +39,13 @@ class MainWindow:
         self.toolbar = ToolBar(root, self)
         menubar.add_cascade(label="Tools", menu=self.toolbar.menu)
 
+        filters_menu = tk.Menu(menubar, tearoff=0)
+        filters_menu.add_command(label="Blur", command=self.apply_blur)
+        filters_menu.add_command(label="Sharpen", command=self.apply_sharpen)
+        filters_menu.add_command(label="Brightness", command=self.apply_brightness)
+        filters_menu.add_command(label="Contrast", command=self.apply_contrast)
+        menubar.add_cascade(label="Filters", menu=filters_menu)
+
         self.current_tool = 'brush'
         self.prev_x = None
         self.prev_y = None
@@ -49,6 +58,7 @@ class MainWindow:
             self.image = Image.open(file_path)
             self.display_image()
             self.draw = ImageDraw.Draw(self.image)
+            self.clear_history()
 
     def save_image(self):
         if self.image:
@@ -64,6 +74,7 @@ class MainWindow:
 
     def crop_image(self):
         if self.image:
+            self.push_undo()
             editor = ImageEditor(self.image_path)
             editor.crop(10, 10, 200, 200)  # Example coordinates
             editor.save('cropped.png')
@@ -73,6 +84,7 @@ class MainWindow:
 
     def resize_image(self):
         if self.image:
+            self.push_undo()
             editor = ImageEditor(self.image_path)
             editor.resize(400, 400)  # Example size
             editor.save('resized.png')
@@ -82,6 +94,7 @@ class MainWindow:
 
     def rotate_image(self):
         if self.image:
+            self.push_undo()
             editor = ImageEditor(self.image_path)
             editor.rotate(90)  # Example rotation
             editor.save('rotated.png')
@@ -90,6 +103,7 @@ class MainWindow:
             self.draw = ImageDraw.Draw(self.image)
 
     def start_paint(self, event):
+        self.push_undo()
         self.prev_x, self.prev_y = event.x, event.y
 
     def paint(self, event):
@@ -103,3 +117,51 @@ class MainWindow:
                                fill='white', width=self.toolbar.eraser_size)
             self.prev_x, self.prev_y = x, y
             self.display_image()
+
+    def apply_filter(self, filter_func):
+        if self.image:
+            self.push_undo()
+            self.image = filter_func(self.image)
+            self.display_image()
+
+    def apply_blur(self):
+        self.apply_filter(lambda img: img.filter(ImageFilter.GaussianBlur(2)))
+
+    def apply_sharpen(self):
+        self.apply_filter(lambda img: img.filter(ImageFilter.SHARPEN))
+
+    def apply_brightness(self):
+        factor = simpledialog.askfloat(
+            "Brightness", "Enter brightness factor (1.0 = original):", minvalue=0.0, maxvalue=10.0, initialvalue=1.0)
+        if factor is not None:
+            self.apply_filter(
+                lambda img: ImageEnhance.Brightness(img).enhance(factor))
+
+    def apply_contrast(self):
+        factor = simpledialog.askfloat(
+            "Contrast", "Enter contrast factor (1.0 = original):", minvalue=0.0, maxvalue=10.0, initialvalue=1.0)
+        if factor is not None:
+            self.apply_filter(
+                lambda img: ImageEnhance.Contrast(img).enhance(factor))
+
+    def push_undo(self):
+        self.undo_stack.append(self.image.copy())
+        self.redo_stack.clear()
+
+    def undo(self):
+        if self.undo_stack:
+            self.redo_stack.append(self.image.copy())
+            self.image = self.undo_stack.pop()
+            self.display_image()
+            self.draw = ImageDraw.Draw(self.image)
+
+    def redo(self):
+        if self.redo_stack:
+            self.undo_stack.append(self.image.copy())
+            self.image = self.redo_stack.pop()
+            self.display_image()
+            self.draw = ImageDraw.Draw(self.image)
+
+    def clear_history(self):
+        self.undo_stack.clear()
+        self.redo_stack.clear()

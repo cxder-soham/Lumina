@@ -19,6 +19,8 @@ class ToolBar:
                               command=self.set_brush_color)
         self.menu.add_command(label="Set Eraser Size",
                               command=self.set_eraser_size)
+        self.menu.add_command(label="Undo", command=self.main_window.undo)
+        self.menu.add_command(label="Redo", command=self.main_window.redo)
 
     def use_brush(self):
         self.main_window.current_tool = 'brush'
