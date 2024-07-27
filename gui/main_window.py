@@ -10,8 +10,8 @@ from .toolbar import ToolBar
 class MainWindow:
     def __init__(self, root):
         self.root = root
-        self.style = Style(theme="darkly")  # Default to darkly theme
-        self.current_theme = "darkly"  # Track current theme
+        self.style = Style(theme="darkly") 
+        self.current_theme = "darkly" 
         self.root.title('Photoshop Clone')
         self.root.geometry('1200x800')
 
@@ -127,11 +127,9 @@ class MainWindow:
         if self.image and self.draw:
             x, y = event.x, event.y
             if self.current_tool == 'brush':
-                self.draw.line([self.prev_x, self.prev_y, x, y],
-                               fill=self.toolbar.brush_color, width=self.toolbar.brush_size)
+                self.draw.line([self.prev_x, self.prev_y, x, y],fill=self.toolbar.brush_color, width=self.toolbar.brush_size)
             elif self.current_tool == 'eraser':
-                self.draw.line([self.prev_x, self.prev_y, x, y],
-                               fill='white', width=self.toolbar.eraser_size)
+                self.draw.line([self.prev_x, self.prev_y, x, y],fill='white', width=self.toolbar.eraser_size)
             self.prev_x, self.prev_y = x, y
             self.display_image()
 

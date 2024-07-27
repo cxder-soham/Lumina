@@ -14,12 +14,9 @@ class ToolBar:
         self.menu = tk.Menu(root, tearoff=0)
         self.menu.add_command(label="Brush", command=self.use_brush)
         self.menu.add_command(label="Eraser", command=self.use_eraser)
-        self.menu.add_command(label="Set Brush Size",
-                              command=self.set_brush_size)
-        self.menu.add_command(label="Set Brush Color",
-                              command=self.set_brush_color)
-        self.menu.add_command(label="Set Eraser Size",
-                              command=self.set_eraser_size)
+        self.menu.add_command(label="Set Brush Size",command=self.set_brush_size)
+        self.menu.add_command(label="Set Brush Color",command=self.set_brush_color)
+        self.menu.add_command(label="Set Eraser Size",command=self.set_eraser_size)
         self.menu.add_command(label="Undo", command=self.main_window.undo)
         self.menu.add_command(label="Redo", command=self.main_window.redo)
 
