@@ -1,4 +1,5 @@
 import tkinter as tk
+from ttkbootstrap import ttk
 from tkinter import simpledialog, colorchooser
 
 

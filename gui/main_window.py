@@ -1,5 +1,7 @@
 import tkinter as tk
-from tkinter import filedialog, Menu, simpledialog
+from tkinter import filedialog, simpledialog
+from ttkbootstrap import Style
+from ttkbootstrap.constants import *
 from PIL import Image, ImageTk, ImageDraw, ImageFilter, ImageEnhance
 from image_processing.editor import ImageEditor
 from .toolbar import ToolBar
@@ -8,8 +10,10 @@ from .toolbar import ToolBar
 class MainWindow:
     def __init__(self, root):
         self.root = root
+        self.style = Style(theme="darkly")  # Default to darkly theme
+        self.current_theme = "darkly"  # Track current theme
         self.root.title('Photoshop Clone')
-        self.root.geometry('800x600')
+        self.root.geometry('1200x800')
 
         self.image = None
         self.image_path = None
@@ -18,7 +22,7 @@ class MainWindow:
         self.redo_stack = []
 
         self.canvas = tk.Canvas(root, bg='white')
-        self.canvas.pack(fill=tk.BOTH, expand=True)
+        self.canvas.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         self.canvas.bind('<B1-Motion>', self.paint)
         self.canvas.bind('<ButtonPress-1>', self.start_paint)
 
@@ -42,13 +46,26 @@ class MainWindow:
         filters_menu = tk.Menu(menubar, tearoff=0)
         filters_menu.add_command(label="Blur", command=self.apply_blur)
         filters_menu.add_command(label="Sharpen", command=self.apply_sharpen)
-        filters_menu.add_command(label="Brightness", command=self.apply_brightness)
+        filters_menu.add_command(
+            label="Brightness", command=self.apply_brightness)
         filters_menu.add_command(label="Contrast", command=self.apply_contrast)
         menubar.add_cascade(label="Filters", menu=filters_menu)
+
+        view_menu = tk.Menu(menubar, tearoff=0)
+        view_menu.add_command(label="Toggle Theme", command=self.toggle_theme)
+        menubar.add_cascade(label="View", menu=view_menu)
 
         self.current_tool = 'brush'
         self.prev_x = None
         self.prev_y = None
+
+    def toggle_theme(self):
+        if self.current_theme == "darkly":
+            self.style.theme_use("cosmo")
+            self.current_theme = "cosmo"
+        else:
+            self.style.theme_use("darkly")
+            self.current_theme = "darkly"
 
     def open_image(self):
         file_path = filedialog.askopenfilename(
