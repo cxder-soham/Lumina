@@ -1,5 +1,6 @@
 from PIL import Image, ImageFilter, ImageEnhance
 
+
 class ImageEditor:
     def __init__(self, image):
         self.image = image

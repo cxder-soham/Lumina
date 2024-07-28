@@ -1,29 +1,36 @@
 import tkinter as tk
 from tkinter import filedialog, simpledialog, messagebox
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageDraw, ImageFilter, ImageEnhance
 from image_processing.editor import ImageEditor
+from .toolbar import ToolBar
+from ttkbootstrap import Style, Toplevel
+from ttkbootstrap.constants import *
+from ttkbootstrap import ttk
 
 
 class MainWindow:
     def __init__(self, root):
+        self.current_theme = "darkly"
         self.tk_image = None
         self.root = root
-        self.root.title('Photoshop Clone')
+        self.root.title('Lumina')
         self.root.geometry('800x600')
-
+        self.style = Style(theme=self.current_theme)
+        self.root.option_add("*TCombobox*Listbox*Background", 'white')
         self.image = None
         self.image_path = None
         self.image_stack = []
         self.redo_stack = []
-
+        self.original_image = None
         self.start_x = None
         self.start_y = None
         self.rect = None
         self.crop_area = None
-
+        self.draw = None
         self.canvas = tk.Canvas(root, bg='white')
         self.canvas.pack(fill=tk.BOTH, expand=True)
-
+        self.canvas.bind('<B1-Motion>', self.paint)
+        self.canvas.bind('<ButtonPress-1>', self.start_paint)
         menubar = tk.Menu(root)
         root.config(menu=menubar)
 
@@ -51,14 +58,43 @@ class MainWindow:
         root.bind("<Control-z>", self.undo)
         root.bind("<Control-y>", self.redo)
 
+        self.toolbar = ToolBar(root, self)
+        menubar.add_cascade(label="Tools", menu=self.toolbar.menu)
+
+        filters_menu = tk.Menu(menubar, tearoff=0)
+        filters_menu.add_command(label="Blur", command=self.blur_popup)
+        filters_menu.add_command(label="Sharpen", command=self.sharpen_popup)
+        filters_menu.add_command(
+            label="Brightness", command=self.apply_brightness)
+        filters_menu.add_command(label="Contrast", command=self.apply_contrast)
+        menubar.add_cascade(label="Filters", menu=filters_menu)
+
+        view_menu = tk.Menu(menubar, tearoff=0)
+        view_menu.add_command(label="Toggle Theme", command=self.toggle_theme)
+        menubar.add_cascade(label="View", menu=view_menu)
+
+        self.current_tool = None
+        self.prev_x = None
+        self.prev_y = None
+
+    def toggle_theme(self):
+        if self.current_theme == "darkly":
+            self.style.theme_use("cosmo")
+            self.current_theme = "cosmo"
+        else:
+            self.style.theme_use("darkly")
+            self.current_theme = "darkly"
+
     def open_image(self):
         file_path = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg *.jpeg *.png *.bmp")])
         if file_path:
             self.image_path = file_path
             self.image = Image.open(file_path)
+            self.original_image = self.image.copy()  # Set the original image here
             self.image_stack = [self.image.copy()]
             self.redo_stack = []
             self.display_image()
+            self.draw = ImageDraw.Draw(self.image)
 
     def save_image(self):
         if self.image:
@@ -80,6 +116,7 @@ class MainWindow:
                 self.crop_dimensions()
             else:
                 self.crop_freeform()
+
     def crop_dimensions(self):
         if self.image:
             left = simpledialog.askinteger("Input", "Left:")
@@ -92,6 +129,7 @@ class MainWindow:
                 editor.crop(left, top, right, bottom)
                 self.image = editor.image
                 self.display_image()
+                self.draw = ImageDraw.Draw(self.image)
 
     def crop_freeform(self):
         if self.image:
@@ -100,7 +138,7 @@ class MainWindow:
             self.canvas.bind("<ButtonRelease-1>", self.on_crop_end)
             self.crop_area = None
             self.canvas.delete("crop_rectangle")
-
+            self.draw = ImageDraw.Draw(self.image)
     def on_crop_start(self, event):
         if self.image:
             self.start_x = self.canvas.canvasx(event.x)
@@ -151,6 +189,7 @@ class MainWindow:
 
             InputDialog(self.root, "Resize Image", "Enter width and height separated by space:", "400 400",
                         on_resize_input)
+        self.draw = ImageDraw.Draw(self.image)
 
     def rotate_image(self):
         if self.image:
@@ -166,18 +205,83 @@ class MainWindow:
                     messagebox.showerror("Invalid Input", "Please enter a valid integer.")
 
             InputDialog(self.root, "Rotate Image", "Enter rotation degrees:", "90", on_rotate_input)
+            self.draw = ImageDraw.Draw(self.image)
 
     def undo(self, event=None):
         if len(self.image_stack) > 1:
             self.redo_stack.append(self.image_stack.pop())
             self.image = self.image_stack[-1].copy()
             self.display_image()
+            self.draw = ImageDraw.Draw(self.image)  # Update the draw object
 
     def redo(self, event=None):
         if self.redo_stack:
             self.image_stack.append(self.redo_stack.pop())
             self.image = self.image_stack[-1].copy()
             self.display_image()
+            self.draw = ImageDraw.Draw(self.image)  # Update the draw object
+
+    def start_paint(self, event):
+        self.prev_x, self.prev_y = event.x, event.y
+
+    def paint(self, event):
+        if self.image and self.draw and self.current_tool:
+            # Save the current image state before drawing
+            self.image_stack.append(self.image.copy())
+            self.redo_stack = []
+
+            x, y = event.x, event.y
+            if self.current_tool == 'brush':
+                self.draw.line([self.prev_x, self.prev_y, x, y], fill=self.toolbar.brush_color,
+                               width=self.toolbar.brush_size)
+            elif self.current_tool == 'eraser':
+                self.draw.line([self.prev_x, self.prev_y, x, y], fill='white', width=self.toolbar.eraser_size)
+            self.prev_x, self.prev_y = x, y
+            self.display_image()
+
+    def apply_filter(self, filter_func):
+        if self.image:
+            self.image_stack.append(self.image.copy())
+            self.redo_stack = []
+            self.image = filter_func(self.image.copy())
+            self.display_image()
+            self.draw = ImageDraw.Draw(self.image)  # Update the draw object
+
+    def apply_blur(self, value):
+        value = float(value)
+        self.apply_filter(lambda img: img.filter(
+            ImageFilter.GaussianBlur(value)))
+
+    def apply_sharpen(self, value):
+        value = float(value)
+        self.apply_filter(lambda img: img.filter(
+            ImageFilter.UnsharpMask(value)))
+
+    def apply_brightness(self):
+        factor = simpledialog.askfloat(
+            "Brightness", "Enter brightness factor (1.0 = original):", minvalue=0.0, maxvalue=10.0, initialvalue=1.0)
+        if factor is not None:
+            self.apply_filter(
+                lambda img: ImageEnhance.Brightness(img).enhance(factor))
+
+    def apply_contrast(self):
+        factor = simpledialog.askfloat(
+            "Contrast", "Enter contrast factor (1.0 = original):", minvalue=0.0, maxvalue=10.0, initialvalue=1.0)
+        if factor is not None:
+            self.apply_filter(
+                lambda img: ImageEnhance.Contrast(img).enhance(factor))
+
+    def blur_popup(self):
+        self.popup_slider("Blur", self.apply_blur)
+
+    def sharpen_popup(self):
+        self.popup_slider("Sharpen", self.apply_sharpen)
+
+    def popup_slider(self, title, command):
+        popup = Toplevel(self.root)
+        popup.title(title)
+        slider = ttk.Scale(popup, from_=0.0, to=10.0, orient=HORIZONTAL, command=command)
+        slider.pack(fill=X, padx=10, pady=10)
 
 
 class InputDialog(tk.Toplevel):
