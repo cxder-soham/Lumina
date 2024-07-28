@@ -1,24 +1,17 @@
 import tkinter as tk
-from tkinter import filedialog, simpledialog, Toplevel, HORIZONTAL, X, messagebox
-from ttkbootstrap import Style
-from ttkbootstrap.constants import *
-from ttkbootstrap import ttk
-from PIL import Image, ImageTk, ImageDraw, ImageFilter, ImageEnhance
+from tkinter import filedialog, simpledialog, messagebox
+from PIL import Image, ImageTk
 from image_processing.editor import ImageEditor
-from .toolbar import ToolBar
 
 
 class MainWindow:
     def __init__(self, root):
         self.tk_image = None
         self.root = root
-        self.style = Style(theme="darkly")
-        self.current_theme = "darkly"
-        self.root.title('bit')
-        self.root.geometry('1200x800')
+        self.root.title('Photoshop Clone')
+        self.root.geometry('800x600')
 
         self.image = None
-        self.original_image = None
         self.image_path = None
         self.image_stack = []
         self.redo_stack = []
@@ -27,12 +20,9 @@ class MainWindow:
         self.start_y = None
         self.rect = None
         self.crop_area = None
-        self.draw = None
 
         self.canvas = tk.Canvas(root, bg='white')
-        self.canvas.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        self.canvas.bind('<B1-Motion>', self.paint)
-        self.canvas.bind('<ButtonPress-1>', self.start_paint)
+        self.canvas.pack(fill=tk.BOTH, expand=True)
 
         menubar = tk.Menu(root)
         root.config(menu=menubar)
@@ -86,18 +76,10 @@ class MainWindow:
 
     def crop_image(self):
         if self.image:
-            editor = ImageEditor(self.image_path)
-            editor.crop(10, 10, 200, 200)  # Example coordinates
-            editor.save('cropped.png')
-            self.image = Image.open('cropped.png')
-            self.original_image = self.image.copy()
-            self.display_image()
-            self.draw = ImageDraw.Draw(self.image)
             if self.crop_option.get() == "dimensions":
                 self.crop_dimensions()
             else:
                 self.crop_freeform()
-
     def crop_dimensions(self):
         if self.image:
             left = simpledialog.askinteger("Input", "Left:")
