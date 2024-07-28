@@ -184,12 +184,12 @@ class MainWindow:
                     editor.resize(width, height)
                     self.image = editor.image
                     self.display_image()
+                    self.draw = ImageDraw.Draw(self.image)  # Update the draw object
                 except ValueError:
                     messagebox.showerror("Invalid Input", "Please enter two integers separated by space.")
 
             InputDialog(self.root, "Resize Image", "Enter width and height separated by space:", "400 400",
                         on_resize_input)
-        self.draw = ImageDraw.Draw(self.image)
 
     def rotate_image(self):
         if self.image:
@@ -201,11 +201,11 @@ class MainWindow:
                     editor.rotate(degrees)
                     self.image = editor.image
                     self.display_image()
+                    self.draw = ImageDraw.Draw(self.image)  # Update the draw object
                 except ValueError:
                     messagebox.showerror("Invalid Input", "Please enter a valid integer.")
 
             InputDialog(self.root, "Rotate Image", "Enter rotation degrees:", "90", on_rotate_input)
-            self.draw = ImageDraw.Draw(self.image)
 
     def undo(self, event=None):
         if len(self.image_stack) > 1:
