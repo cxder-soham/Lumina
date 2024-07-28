@@ -13,7 +13,7 @@ class MainWindow:
         self.root = root
         self.style = Style(theme="darkly")  
         self.current_theme = "darkly"
-        self.root.title('Photoshop Clone')
+        self.root.title('bit')
         self.root.geometry('1200x800')
 
         self.image = None
